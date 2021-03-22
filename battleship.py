@@ -3,6 +3,9 @@
 At some point I may try and split this up into separate modules, however for
 now everything is in one spot for simplicity.
 
+I borrow pretty heavily from `https://github.com/niklasf/python-chess` on some
+of the ideas below.
+
 Exceptions:
     InvalidCoordinate, InvalidCoordinates
 Exported Classes:
