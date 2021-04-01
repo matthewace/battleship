@@ -130,4 +130,4 @@ dmypy.json
 __jnk.txt
 
 # My shits
-tester.py
+*tester.py
