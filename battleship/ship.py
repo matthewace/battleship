@@ -1,11 +1,5 @@
 """There are 5 ship types in the game of Battleship.  Each ship has a specific
 length (number of coordinates).
-
-    - Carrier: 5
-    - Battleship: 4
-    - Submarine: 3
-    - Destroyer: 3
-    - Patrol Boat: 2
 """
 
 import dataclasses
@@ -19,17 +13,27 @@ SHIPS = {
     "Patrol Boat": 2
 }
 
+
 @dataclasses.dataclass(frozen=True)
 class Ship:
+    """A dataclass representation of a Ship.
+
+    Attributes:
+    -----------
+    name : str
+        The name of the ship which represents its type.
+    """
     name: str
-    
+
     def __str__(self) -> str:
         return self.symbol() * self.length()
 
     def symbol(self) -> str:
+        """Symbol representation displayed on game board."""
         return self.name[0]
 
     def length(self) -> int:
+        """The amount of coordinates this ship occupies on the game board."""
         return SHIPS[self.name]
 
     @classmethod
@@ -38,6 +42,7 @@ class Ship:
         name = name.capitalize()
         if name in SHIPS:
             return cls(name)
+        return None
 
     @classmethod
     def from_symbol(cls, symbol: str):
@@ -46,6 +51,7 @@ class Ship:
         for name in SHIPS:
             if symbol == name[0]:
                 return cls(name)
+        return None
 
     @classmethod
     def build(cls, name: str):
