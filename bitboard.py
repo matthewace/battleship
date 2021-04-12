@@ -1,5 +1,7 @@
 """Module for the CoordinateSet class to be used in other modules."""
 
+from __future__ import annotations
+
 from typing import Iterable, Iterator, List, SupportsInt, Union
 
 
@@ -236,9 +238,7 @@ def _carry_rippler(mask):
 
 
 def shared(a: Coordinate, b: Coordinate) -> Bitboard:
-    """Tests if `a` and `b` are on the same row or column and returns the shared
-    row or column.
-    """
+    """Return the shared row or column of `a` and `b`."""
     if coordinate_col(a) == coordinate_col(b):
         return BB_COLS[coordinate_col(a)]
     elif coordinate_row(a) == coordinate_row(b):
@@ -248,9 +248,7 @@ def shared(a: Coordinate, b: Coordinate) -> Bitboard:
 
 
 def _rays() -> List[List[Bitboard]]:
-    """Calculate all possible rays on the board.  Only rays on the same row or
-    column are allowed; no diagonals.
-    """
+    """Calculate all possible rays on the board."""
     rays = []
     for a in COORDINATES:
         a_rays = []
@@ -268,9 +266,11 @@ BB_RAYS = _rays()
 
 
 def ray(a: Coordinate, b: Coordinate) -> Bitboard:
-    """Return Bitboard representation of all Coordinates between and including
-    a and b.
+    """Return Bitboard representation of all Coordinates between and
+    including a and b.
     """
+    if a not in COORDINATES or b not in COORDINATES:
+        raise ValueError(f"Invalid Coordinates: ({a}, {b})")
     return BB_RAYS[a][b]
 
 
@@ -278,6 +278,8 @@ def between(a: Coordinate, b: Coordinate) -> Bitboard:
     """Return Bitboard representation of all Coordinates between but not
     including a and b.
     """
+    if a not in COORDINATES or b not in COORDINATES:
+        raise ValueError(f"Invalid Coordinates: ({a}, {b})")
     bb = BB_RAYS[a][b] & ((BB_ALL << a) ^ (BB_ALL << b))
     return bb & (bb - 1)
 
@@ -288,56 +290,12 @@ IntoCoordinateSet = Union[SupportsInt, Iterable[Coordinate]]
 class CoordinateSet:
     """A set of coordinates.
 
-    >>> import bitboard
-    >>>
-    >>> coords = bitboard.CoordinateSet([bitboard.F3, bitboard.G4])
-    >>> coords
-    CoordinateSet(0x0000_0000_0000_0000_0010_0200_0000)
-
-    >>> coords = bitboard.CoordinateSet(bitboard.BB_C7 | bitboard.BB_ROW_3)
-    >>> coords
-    CoordinateSet(0x0000_0000_0000_4000_0000_3ff0_0000)
-
-    >>> print(coords)
-    . . . . . . . . . .
-    . . . . . . . . . .
-    . . . . . . . . . .
-    . . 1 . . . . . . .
-    . . . . . . . . . .
-    . . . . . . . . . .
-    . . . . . . . . . .
-    1 1 1 1 1 1 1 1 1 1
-    . . . . . . . . . .
-    . . . . . . . . . .
-
-    >>> len(coords)
-    11
-
-    >>> bitboard.H3 in coords
-    True
-
-    >>> for coord in coords:
-    ...     print(coord)
-    ...
-    20
-    21
-    22
-    23
-    24
-    25
-    26
-    27
-    28
-    29
-    62
-
-    >>> list(coords)
-    [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 62]
-
-    >>> int(coords)
-    4611686019500081152
+    The coordinate set is represented internally by a 100-bit integer
+    mask of the included coordinates.  Allows for bitwise operations and
+    operations available to set class objects.
     """
-    def __init__(self, coordinates: list) -> None:
+
+    def __init__(self, coordinates: IntoCoordinateSet = BB_EMPTY) -> None:
         try:
             self.mask = coordinates.__int__() & BB_ALL
             return
@@ -359,259 +317,104 @@ class CoordinateSet:
     def __len__(self) -> int:
         return popcount(self.mask)
 
-    def union(self, other: IntoCoordinateSet):
-        """Returns the union of CoordinateSet and Bitboard.
+    def add(self, coordinate: Coordinate) -> None:
+        """Add `coordinate` to the set."""
+        self.mask |= BB_COORDINATES[coordinate]
 
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.union(bb)
-        CoordinateSet(0x0000_1004_0100_4013_ff01_0040_1004)
-        >>> print(cs.union(bb))
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        1 1 1 1 1 1 1 1 1 1
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
+    def discard(self, coordinate: Coordinate) -> None:
+        """Remove `coordinate` from the set."""
+        self.mask &= ~BB_COORDINATES[coordinate]
+
+    def isdisjoint(self, other: IntoCoordinateSet) -> bool:
+        """Return `True` if the set has no elements in common with
+        `other`.
         """
+        return not bool(self & other)
+
+    def issubset(self, other: IntoCoordinateSet) -> bool:
+        """Return `True` if all elements in this set are in `other`."""
+        return not bool(self & ~other)
+
+    def issuperset(self, other: IntoCoordinateSet) -> bool:
+        """Return `True` if all elements in `other` are in this set."""
+        return not bool(~self & other)
+
+    def union(self, other: IntoCoordinateSet):
+        """Return a new set with elements from this set and `other`."""
         return self | other
 
     def __or__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         other = CoordinateSet(other)
         other.mask |= self.mask
         return other
 
     def intersection(self, other: IntoCoordinateSet):
-        """Returns intersection of CoordinateSet and Bitboard.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.intersection(bb)
-        CoordinateSet(0x0000_0000_0000_0000_0400_0000_0000)
-        >>> print(cs.intersection(bb))
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . 1 . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
+        """Return a new set with common elements from this set and
+        `other`.
         """
         return self & other
 
     def __and__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         other = CoordinateSet(other)
         other.mask &= self.mask
         return other
 
     def difference(self, other: IntoCoordinateSet):
-        """Return the difference of CoordinateSet and Bitboard.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.difference(bb)
-        CoordinateSet(0x0000_0000_0000_0003_fb00_0000_0000)
-        >>> print(cs.difference(bb))
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        1 1 . 1 1 1 1 1 1 1
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
+        """Return a new set with elements in this set but not in
+        `other`.
         """
         return self - other
 
     def __sub__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         other = CoordinateSet(other)
         other.mask = self.mask & ~other.mask
         return other
 
     def symmetric_difference(self, other: IntoCoordinateSet):
-        """Return the symmetric difference between CoordinateSet and Bitboard.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.symmetric_difference(bb)
-        CoordinateSet(0x0000_1004_0100_4013_fb01_0040_1004)
-        >>> print(cs.symmetric_difference(bb))
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        1 1 . 1 1 1 1 1 1 1
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
+        """Return a new set with elements in either this set or `other`
+        but not both.
         """
         return self ^ other
 
     def __xor__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         other = CoordinateSet(other)
         other.mask ^= self.mask
         return other
 
     def copy(self):
-        """Returns a new <class 'bitboard.CoordinateSet'> with same parameters
-        of original.
-        """
+        """Return a shallow copy of the set."""
         return CoordinateSet(self.mask)
 
-    def update(self, *others: IntoCoordinateSet) -> None:
-        """Updates CoordinateSet as union with Bitboard.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.update(bb)
-        >>> cs
-        CoordinateSet(0x0000_1004_0100_4013_ff01_0040_1004)
-        >>> print(cs)
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        1 1 1 1 1 1 1 1 1 1
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        """
-        for other in others:
-            self |= other
+    def update(self, other: IntoCoordinateSet) -> None:
+        """Update the set, adding elements from `other`."""
+        self |= other
 
     def __ior__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         self.mask |= CoordinateSet(other).mask
         return self
 
-    def intersection_update(self, *others: IntoCoordinateSet) -> None:
-        """Updates instance as intersection with others.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.intersection_update(bb)
-        >>> cs
-        CoordinateSet(0x0000_0000_0000_0000_0400_0000_0000)
-        >>> print(cs)
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . 1 . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        """
-        for other in others:
-            self &= other
+    def intersection_update(self, other: IntoCoordinateSet) -> None:
+        """Remove set elements not common  with it and `other`."""
+        self &= other
 
     def __iand__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         self.mask &= CoordinateSet(other).mask
         return self
 
     def difference_update(self, other: IntoCoordinateSet) -> None:
-        """Update instance as difference with other.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.difference_update(bb)
-        >>> cs
-        CoordinateSet(0x0000_0000_0000_0003_fb00_0000_0000)
-        >>> print(cs)
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        1 1 . 1 1 1 1 1 1 1
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        """
+        """Removing set elements found in `other`."""
         self -= other
 
     def __isub__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         self.mask &= ~CoordinateSet(other).mask
         return self
 
     def symmetric_difference_update(self, other: IntoCoordinateSet) -> None:
-        """Updates the instance as the symmetric difference with other.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet(bitboard.BB_ROW_5)
-        >>> bb = bitboard.BB_COL_C
-        >>> cs.symmetric_difference_update(bb)
-        >>> cs
-        CoordinateSet(0x0000_1004_0100_4013_fb01_0040_1004)
-        >>> print(cs)
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        1 1 . 1 1 1 1 1 1 1
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        . . 1 . . . . . . .
-        """
+        """Remove set elements common to it and `other`."""
         self ^= other
 
     def __ixor__(self, other: IntoCoordinateSet):
-        if isinstance(other, CoordinateSet):
-            raise TypeError("Invalid parameter type: CoordinateSet")
         self.mask ^= CoordinateSet(other).mask
-
-    def add(self, coordinate: Coordinate) -> None:
-        """Add a coordinate to the set.
-
-        >>> import bitboard
-        >>> cs = bitboard.CoordinateSet([bitboard.A3, bitboard.A4])
-        >>> cs.add(bitboard.A5)
-        >>> list(cs)
-        [20, 30, 40]
-        """
-        self.mask |= BB_COORDINATES[coordinate]
-
-    def discard(self, coordinate: Coordinate) -> None:
-        """Removes coordinate from the set."""
-        self.mask &= ~BB_COORDINATES[coordinate]
 
     def remove(self, coordinate: Coordinate) -> None:
         """Remove a coordinate from the set.
@@ -641,11 +444,11 @@ class CoordinateSet:
         self.mask = BB_EMPTY
 
     def carry_rippler(self) -> Iterator[Bitboard]:
-        """Iterator over subsets of this set."""
+        """Return generator of subsets of this set."""
         return _carry_rippler(self.mask)
 
     def tolist(self) -> List[bool]:
-        """Convert set to a list of 100 boolean values."""
+        """Convert set to a list of boolean values."""
         bool_list = [False] * 100
         for coordinate in self:
             bool_list[coordinate] = True
@@ -703,58 +506,23 @@ class CoordinateSet:
 
     @classmethod
     def ray(cls, a: Coordinate, b: Coordinate):
-        """All coordinates on a row or column between and including the two
-        input value coordinates (if they are aligned).
-
-        >>> import bitboard
-        >>> print(bitboard.CoordinateSet.ray(bitboard.C4, bitboard.F4))
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . 1 1 1 1 . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
+        """All coordinates on a row or column between and including the
+        two input value coordinates (if they are aligned).
         """
         return cls(ray(a, b))
 
     @classmethod
     def between(cls, a: Coordinate, b: Coordinate):
-        """All coordinates on a row or column between but excluding the two
-        input value coordinates (if they are aligned).
-
-        >>> import bitboard
-        >>> print(bitboard.CoordinateSet.between(bitboard.C4, bitboard.F4))
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . 1 1 . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
-        . . . . . . . . . .
+        """All coordinates on a row or column between but excluding the
+        two input value coordinates (if they are aligned).
         """
         return cls(between(a, b))
 
     @classmethod
     def from_coordinate(cls, coordinate: Coordinate):
-        """Creates a <class `bitboard.CoordinateSet`> from a single coordinate.
-
-        >>> import bitboard
-        >>> from bitboard import CoordinateSet
-        >>> CoordinateSet.from_coordinate(bitboard.H4) == bitboard.BB_H4
-        True
+        """Creates a <class `bitboard.CoordinateSet`> from a single
+        coordinate.
         """
         if isinstance(coordinate, str):
             coordinate = parse_coordinate(coordinate)
         return cls(BB_COORDINATES[coordinate])
-
-    @classmethod
-    def empty(cls):
-        """Create an empty <class `bitboard.CoordinateSet`> object."""
-        return cls(BB_EMPTY)

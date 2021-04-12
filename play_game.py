@@ -1,7 +1,10 @@
+"""Play a game of Battleship."""
+
 import os
 import sys
 
-from battleship import Ship, Player, CPU
+from gamebox import Ship, ShipSet
+from player import CPU, Player
 
 
 BANNER = """
@@ -10,13 +13,6 @@ BANNER = """
 *******************************
 """
 
-SHIPS = {
-    "Carrier": 5,
-    "Battleship": 4,
-    "Submarine": 3,
-    "Destroyer": 3,
-    "Patrol Boat": 2
-}
 
 def welcome() -> str:
     """The welcome screen at beginning of game where user enters their name and
@@ -31,12 +27,13 @@ def welcome() -> str:
 
     return play(player, cpu)
 
+
 def play(player: Player, cpu: CPU) -> str:
-    """The meat of the module for playing the game.  The first option is whether
-    to continue playing or quit.  If player chooses to continue, then the boards
-    are reset and ships are placed.  The game is then played with turns alternating
-    between the player and cpu.  The game is ended when either players' ships
-    have all been destroyed.
+    """The meat of the module for playing the game.  The first option is
+    whether to continue playing or quit.  If player chooses to continue, then
+    the boards are reset and ships are placed.  The game is then played with
+    turns alternating between the player and cpu.  The game is ended when
+    either players' ships have all been destroyed.
 
     Parameters
     ----------
@@ -54,17 +51,16 @@ def play(player: Player, cpu: CPU) -> str:
         cont = input('Play a game? 1-yes  2-no: ')
         if cont == '2':
             return 'See you next time!'
-        elif cont == '1':
+        if cont == '1':
             break
-    
+
     # Reset Boards
     player.clear_boards()
     cpu.clear_boards()
 
     # Place ships
-    cpu.add_all_ships()
-    for ship_name, ship_size in SHIPS.items():
-        built = False
+    for ship in ShipSet:
+        for _player in []
         while not built:
             os.system('clear')
             print(f'*** Building {ship_name} ***')

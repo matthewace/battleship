@@ -3,7 +3,10 @@ length (number of coordinates).
 """
 
 import dataclasses
+from typing import Iterator
 
+
+ShipType = int
 
 SHIPS = {
     "Carrier": 5,
@@ -26,23 +29,15 @@ class Ship:
     name: str
 
     def __str__(self) -> str:
-        return self.symbol() * self.length()
+        return self.name
+
+    def __len__(self) -> int:
+        """The amount of coordinates this ship occupies on the game board."""
+        return SHIPS[self.name]
 
     def symbol(self) -> str:
         """Symbol representation displayed on game board."""
         return self.name[0]
-
-    def length(self) -> int:
-        """The amount of coordinates this ship occupies on the game board."""
-        return SHIPS[self.name]
-
-    @classmethod
-    def from_name(cls, name: str):
-        """Create a <class `ship.Ship`> instance from ship name."""
-        name = name.capitalize()
-        if name in SHIPS:
-            return cls(name)
-        return None
 
     @classmethod
     def from_symbol(cls, symbol: str):
@@ -53,9 +48,14 @@ class Ship:
                 return cls(name)
         return None
 
-    @classmethod
-    def build(cls, name: str):
-        """Creates a <class `ship.Ship`> instance from either ship symbol or
-        name.
-        """
-        return cls.from_name(name) or cls.from_symbol(name)
+
+@dataclasses.dataclass(frozen=True)
+class ShipSet:
+    """A collection of all the types of Ship that is needed for a game of
+    Battleship.
+    """
+    ships = (Ship(name) for name in SHIPS)
+
+    def __iter__(self) -> Iterator[Ship]:
+        for ship in self.ships:
+            yield ship
