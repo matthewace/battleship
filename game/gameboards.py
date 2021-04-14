@@ -122,7 +122,7 @@ class GameBoard:
             self.miss.add(coordinate)
             peg = MISS
         self.symbols[coordinate] = peg
-        
+
 
 class ShipBoard(GameBoard):
     """The board on which a player places their ships.  This should be
