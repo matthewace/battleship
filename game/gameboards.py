@@ -5,16 +5,16 @@ opponent's ship-board.
 """
 from typing import Optional, Tuple, Union
 
-import bitboard
-from gamebox.ship import Ship
+import game.bitboard as bitboard
+from game.ship import Ship
 
 
-AttackResult = Tuple[bool, Optional[Ship]]
+AttackResult = Tuple[bool, bool, Optional[Ship]]
 Coordinate = Union[str, bitboard.Coordinate]
 CoordinateSet = bitboard.CoordinateSet
 
 
-PEGS = ["x", "o"]
+PEGS = [HIT, MISS] = ["+", "-"]
 
 Direction = str
 DIRECTIONS = {
@@ -93,11 +93,11 @@ class GameBoard:
         self.miss = CoordinateSet()
         self.occupied = CoordinateSet()
         self.ships = {
-            'Carrier': CoordinateSet(),
-            'Battleship': CoordinateSet(),
-            'Destroyer': CoordinateSet(),
-            'Submarine': CoordinateSet(),
-            'Patrol Boat': CoordinateSet()
+            Ship('Carrier'): CoordinateSet(),
+            Ship('Battleship'): CoordinateSet(),
+            Ship('Destroyer'): CoordinateSet(),
+            Ship('Submarine'): CoordinateSet(),
+            Ship('Patrol Boat'): CoordinateSet()
         }
         self.symbols = [EMPTY_COORDINATE for _ in range(100)]
         self.sunk = []
@@ -109,20 +109,20 @@ class GameBoard:
     def add_peg(self, coordinate: Coordinate, result: AttackResult) -> None:
         """Add a peg to the board."""
         coordinate = parse_coordinate(coordinate)
-        hit, ship_type = result
+        hit, sunk, ship = result
         self.attacked.add(coordinate)
         if hit:
             self.hit.add(coordinate)
-            if ship_type:
-                peg = ship_type.symbol
+            if sunk:
+                peg = ship.symbol()
                 self.sunk.append(peg)
             else:
-                peg = PEGS[0]
+                peg = HIT
         else:
             self.miss.add(coordinate)
-            peg = PEGS[1]
+            peg = MISS
         self.symbols[coordinate] = peg
-
+        
 
 class ShipBoard(GameBoard):
     """The board on which a player places their ships.  This should be
@@ -151,7 +151,7 @@ class ShipBoard(GameBoard):
         """
         ship_coords = ship_coordinates(bow, len(ship_obj), direction)
         if ship_coords and ship_coords.isdisjoint(self.occupied):
-            self.ships[ship_obj.name] = ship_coords
+            self.ships[ship_obj] = ship_coords
             self.occupied.update(ship_coords)
             for _c in ship_coords:
                 self.symbols[_c] = ship_obj.symbol()
@@ -168,18 +168,21 @@ class ShipBoard(GameBoard):
 
         Returns
         -------
-        result : AttackResult
-            Results of the attack.
-            (hit : bool, sunk : bool, ship_type : Ship
+        result : bool
         """
         coordinate = parse_coordinate(coordinate)
+        self.attacked.add(coordinate)
         hit = coordinate in self.occupied
-        ship_type = None
+        sunk = False
+        ship = None
         if hit:
-            _ship_type = self.ship_type_at(coordinate)
-            if self.check_sunk(_ship_type):
-                ship_type = _ship_type
-        return (hit, ship_type)
+            self.hit.add(coordinate)
+            ship = self.ship_type_at(coordinate)
+            if self.check_sunk(ship):
+                sunk = True
+        else:
+            self.miss.add(coordinate)
+        return (hit, sunk, ship)
 
     def check_hit(self, coordinate: Coordinate) -> bool:
         """Check coordinate for Ship and return corresponding Peg."""
@@ -188,7 +191,7 @@ class ShipBoard(GameBoard):
 
     def check_sunk(self, ship_type: Ship) -> bool:
         """Return True if ship_type has been sunk."""
-        ship_mask = self.ships[ship_type.name]
+        ship_mask = self.ships[ship_type]
         return ship_mask.issubset(self.hit)
 
     def check_all_sunk(self) -> bool:
@@ -214,18 +217,13 @@ class ShipBoard(GameBoard):
     def add_peg(self, coordinate: Coordinate, result: AttackResult) -> None:
         """Add a peg to the board."""
         coordinate = parse_coordinate(coordinate)
-        hit, ship_type = result
-        self.attacked.add(coordinate)
+        hit, sunk, ship = result
         if hit:
-            self.hit.add(coordinate)
-            if ship_type:
-                peg = ship_type.symbol
+            peg = ship.symbol()
+            if sunk:
                 self.sunk.append(peg)
-            else:
-                peg = PEGS[0]
         else:
-            self.miss.add(coordinate)
-            peg = PEGS[1]
+            peg = MISS
         self.symbols[coordinate] = peg.lower()
 
 
@@ -241,3 +239,8 @@ class AttackBoard(GameBoard):
 
     def __str__(self) -> str:
         return f'Sank: {" ".join(self.sunk)}\n' + super().__str__()
+
+    def unattacked(self, coordinate: Coordinate) -> bool:
+        """Check if coordinate is available to be attacked."""
+        coordinate = parse_coordinate(coordinate)
+        return coordinate not in self.attacked

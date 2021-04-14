@@ -1,10 +1,11 @@
 """Play a game of Battleship."""
 
+from __future__ import annotations
+
 import os
 import sys
 
-from gamebox import Ship, ShipSet
-from player import CPU, Player
+from game import CPU, Human, Player, Battleship
 
 
 BANNER = """
@@ -13,120 +14,73 @@ BANNER = """
 *******************************
 """
 
+POSTGAME_OPTIONS = """
+1: View Game Log
+2: View Final Ship Boards
+3: Continue
+
+"""
+
 
 def welcome() -> str:
-    """The welcome screen at beginning of game where user enters their name and
-    the player and cpu instances are created.  Then calls function `play` to
-    continue with the game.
-    """
+    """Get game type and player name (if human is playing)."""
     os.system('clear')
     print(BANNER)
-    name = input('Enter Name: ')
-    player = Player(name)
-    cpu = CPU('CPU')
+    game_type = input('(P)lay or (S)im? ').upper()
+    if game_type == 'P':
+        p1_name = input('Player Name: ')
+        player1 = Human(p1_name)
+    else:
+        player1 = CPU('cpu_p1')
+    player2 = CPU('cpu_p2')
 
-    return play(player, cpu)
+    play(player1, player2)
 
 
-def play(player: Player, cpu: CPU) -> str:
-    """The meat of the module for playing the game.  The first option is
-    whether to continue playing or quit.  If player chooses to continue, then
-    the boards are reset and ships are placed.  The game is then played with
-    turns alternating between the player and cpu.  The game is ended when
-    either players' ships have all been destroyed.
+def play(player1: Player, player2: Player) -> None:
+    """Manage the game sessions.
 
     Parameters
     ----------
-    player : class <`battleship.Player`> instance.
+    player1 : class <`battleship.Player`> instance.
         The human player.
-    cpu : class <`battleship.CPU`> instance.
+    player2 : class <`battleship.Player`> instance.
         The CPU player.
     """
     while True:
+        # Provide option to play another game
         os.system('clear')
-        print(player)
-        print(player.stats())
-        print(cpu)
-        print(cpu.stats())
+        print(player1)
+        print(player2)
         cont = input('Play a game? 1-yes  2-no: ')
-        if cont == '2':
-            return 'See you next time!'
-        if cont == '1':
+        if cont != '1':
             break
 
-    # Reset Boards
-    player.clear_boards()
-    cpu.clear_boards()
+        # Play the game
+        game = Battleship(player1, player2)
+        winner, loser = game.play_game()
 
-    # Place ships
-    for ship in ShipSet:
-        for _player in []
-        while not built:
-            os.system('clear')
-            print(f'*** Building {ship_name} ***')
-            player.show_ship_board()
-            print(f'Ship Length: {ship_size}')
-            bow = input('Bow Coordinate: ').upper()
-            heading = input('Direction: ').capitalize()
-            try:
-                if player.add_ship(Ship.build(ship_name, bow, heading)):
-                    built = True
-            except Exception as err:
-                print(err)
-
-    # Play the game
-    winner = None
-    loser = None
-    while not winner:
-        os.system('clear')
-        # Player's Turn
+        # Post game
+        winner.win()
+        loser.lose()
         while True:
             os.system('clear')
-            print(f"{player.name}'s Turn:")
-            player.show_attack_board()
-            attk_coord = input('Choose coordinate to attack (`q` to quit): ').upper()
-            if 'Q' in attk_coord:
-                return('Player quit...')
-            if not player.attack_board.is_attacked(attk_coord):
+            print(f"{winner.name} wins on turn {game.turn_num}!")
+            next_step = input(POSTGAME_OPTIONS)
+            if next_step == '1':
+                os.system('clear')
+                game.show_log()
+                input('Enter to continue...')
+            elif next_step == '2':
+                os.system('clear')
+                print("Winning Board:")
+                winner.show_ship_board()
+                print("\nLosing Board:")
+                loser.show_ship_board()
+                input('Enter to continue...')
+            elif next_step == '3':
                 break
-        os.system('clear')
-        reply = cpu.get_rekt(attk_coord)
-        hit = "HIT" in reply
-        player.add_attack_peg(attk_coord, hit)
-        print(f"{player.name} attacks {attk_coord}:")
-        player.show_attack_board()
-        input(reply)
-        if cpu.is_dead():
-            winner = player
-            loser = cpu
-            break
 
-        # CPU's turn
-        os.system('clear')
-        attk_coord = cpu.choose_attack_coordinate()
-        reply = player.get_rekt(attk_coord)
-        hit = "HIT" in reply
-        cpu.add_attack_peg(attk_coord, hit)
-        print(f'CPU attacks {attk_coord}...')
-        player.show_ship_board()
-        input(reply)
-        if player.is_dead():
-            winner = cpu
-            loser = player
-            break
-
-    # We've got a WINNER!!!!
-    os.system('clear')
-    print(f'Congrats {winner.name}!!!')
-    print(f'\nPlayer Board:\n')
-    player.show_ship_board()
-    print(f'\n\nCPU Board:\n')
-    cpu.show_ship_board()
-    input(f'\nEnter to continue...')
-    
-    winner.win()
-    loser.lose()
-    play(player, cpu)
 
 if __name__ == '__main__':
     sys.exit(welcome())

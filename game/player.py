@@ -8,8 +8,9 @@ CPU - AI player
 import random
 from typing import Tuple
 
-import bitboard
-from gamebox import AttackBoard, ShipBoard, Ship
+import game.bitboard as bitboard
+from game.gameboards import AttackBoard, ShipBoard
+from game.ship import Ship
 
 
 AttackResult = Tuple[bool, Ship]
@@ -112,6 +113,10 @@ class Player:
         results : AttackResult
             The results of attacking coordinate.
         """
+        hit = result[0]
+        self.attacks += 1
+        if hit:
+            self.hits += 1
         self.attack_board.add_peg(coordinate, result)
 
     def add_ship_peg(self, coordinate: str, result: AttackResult) -> None:
@@ -138,7 +143,10 @@ class Player:
         """Add to the LOSS column."""
         self.losses += 1
 
-    # User input methods
+
+class Human(Player):
+    """The human variant of a Player."""
+
     @staticmethod
     def choose(choice_type: str) -> str:
         """Get player's choice of available options.
@@ -152,8 +160,8 @@ class Player:
         tries = 0
         while tries < 5:
             tries += 1
-            choice = input(f'Choose a {choice_type}: ')
-            if choice.upper() in options:
+            choice = input(f'Choose a {choice_type}: ').upper()
+            if choice in options or "Q" in choice:
                 return choice
         return None
 
@@ -161,8 +169,14 @@ class Player:
 class CPU(Player):
     """The AI variant of a Player."""
 
-    # User input methods
     @staticmethod
     def choose(choice_type: str) -> str:
+        """Randomly select an option from provided choice_type.
+
+        Params
+        ------
+        choice_type : str
+            Key for list of choices.
+        """
         options = CHOICES[choice_type.lower()]
         return random.choice(options)
