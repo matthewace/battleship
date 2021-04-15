@@ -1,4 +1,10 @@
-"""Module which contains the game."""
+"""Module which contains the game.
+
+Rules of the game:
+https://www.hasbro.com/common/instruct/Battleship.PDF
+
+
+"""
 
 import os
 from typing import List, Tuple, Union
@@ -36,33 +42,6 @@ def stringify(logs: Log, indent: int = 4, level: int = 0) -> str:
         else:
             pretty_logs += stringify(log, level=level, indent=indent)
     return pretty_logs
-
-
-def place_ships(player: Player) -> Log:
-    """Guide player in placing ships on board."""
-    log = []
-    log.append(f"FUNC: place_ships({player.name})")
-    for ship in player.ship_board.ships:
-        ship_log = []
-        ship_log.append(f"Building {ship}")
-        built = False
-        while not built:
-            build_log = []
-            if isinstance(player, Human):
-                os.system('clear')
-                print(f'*** Building {ship} ***')
-                player.show_ship_board()
-                print(f'Ship Length: {len(ship)}')
-            bow = player.choose("coordinate").upper()
-            direction = player.choose("direction").upper()
-            try:
-                build_log.append(f"add_ship({ship}, {bow}, {direction})")
-                built = player.add_ship(ship, bow, direction)
-            except ValueError as err:
-                build_log.append(f"ERROR: {err}")
-            ship_log.append(build_log)
-        log.append(ship_log)
-    return log
 
 
 class Battleship:
@@ -114,7 +93,7 @@ class Battleship:
                     self.logs["turns"].append(turn_log)
                     winner = defender
                     loser = attacker
-                    break
+                    return (winner, loser)
                 valid_choice = attacker.attack_board.unattacked(attk_coord)
             result = defender.attacked(attk_coord)
             defender.add_ship_peg(attk_coord, result)
@@ -140,7 +119,7 @@ class Battleship:
         """Clear boards and place ships for both players."""
         for player in self.players:
             player.clear_boards()
-            ship_log = place_ships(player)
+            ship_log = self.place_ships(player)
             self.logs["debug"].append(ship_log)
 
     def show_log(self) -> None:
@@ -150,3 +129,30 @@ class Battleship:
     def _show_debug_logs(self) -> None:
         """Print the debug logs."""
         print(stringify(self.logs["debug"]))
+
+    @staticmethod
+    def place_ships(player: Player) -> Log:
+        """Guide player in placing ships on board."""
+        log = []
+        log.append(f"FUNC: place_ships({player.name})")
+        for ship in player.ship_board.ships:
+            ship_log = []
+            ship_log.append(f"Building {ship}")
+            built = False
+            while not built:
+                build_log = []
+                if isinstance(player, Human):
+                    os.system('clear')
+                    print(f'*** Building {ship} ***')
+                    player.show_ship_board()
+                    print(f'Ship Length: {len(ship)}')
+                bow = player.choose("coordinate").upper()
+                direction = player.choose("direction").upper()
+                try:
+                    build_log.append(f"add_ship({ship}, {bow}, {direction})")
+                    built = player.add_ship(ship, bow, direction)
+                except ValueError as err:
+                    build_log.append(f"ERROR: {err}")
+                ship_log.append(build_log)
+            log.append(ship_log)
+        return log

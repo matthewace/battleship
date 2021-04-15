@@ -113,11 +113,10 @@ class GameBoard:
         self.attacked.add(coordinate)
         if hit:
             self.hit.add(coordinate)
+            self.ships[ship].add(coordinate)
+            peg = ship.symbol()
             if sunk:
-                peg = ship.symbol()
                 self.sunk.append(peg)
-            else:
-                peg = HIT
         else:
             self.miss.add(coordinate)
             peg = MISS
