@@ -1,4 +1,9 @@
-"""Module which contains the game."""
+"""Module to manage the gameplay.
+
+Exports
+-------
+<class 'game.battleship.Battleship'> - Manage the gameplay between two players.
+"""
 
 import os
 from typing import List, Tuple, Union

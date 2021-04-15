@@ -12,14 +12,13 @@ BANNER = """
 *******************************
 ****** BATTLESHIP v1.0.0 ******
 *******************************
-"""
+""".strip()
 
 POSTGAME_OPTIONS = """
 1: View Game Log
 2: View Final Ship Boards
 3: Continue
-
-"""
+""".strip()
 
 
 def welcome() -> str:
@@ -66,7 +65,8 @@ def play(player1: Player, player2: Player) -> None:
         while True:
             os.system('clear')
             print(f"{winner.name} wins on turn {game.turn_num}!")
-            next_step = input(POSTGAME_OPTIONS)
+            print(POSTGAME_OPTIONS)
+            next_step = input('-- ')
             if next_step == '1':
                 os.system('clear')
                 game.show_log()
