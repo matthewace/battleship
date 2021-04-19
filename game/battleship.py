@@ -102,6 +102,7 @@ class Battleship:
                 winner = defender
                 loser = attacker
                 self.log.add(turn_num, 'Q**')
+                continue
             if not attacker.attack_board.unattacked(attk_coord):
                 continue
             result = defender.attacked(attk_coord)
