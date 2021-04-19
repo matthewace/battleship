@@ -123,7 +123,7 @@ class Battleship:
                 else:
                     shot_log += ship.symbol().lower()
             else:
-                output = 'MISS!'
+                output += ' MISS!'
 
             self.log.add(turn_num, shot_log)
             half_turns += 1

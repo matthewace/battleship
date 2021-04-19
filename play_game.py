@@ -18,7 +18,8 @@ POSTGAME_OPTIONS = """
 1: View Game Log
 2: View Final Ship Boards
 3: Continue
-""".strip()
+
+"""
 
 
 def welcome() -> str:
