@@ -65,7 +65,7 @@ def play(player1: Player, player2: Player) -> None:
         loser.lose()
         while True:
             os.system('clear')
-            print(f"{winner.name} wins on turn {game.turn_num}!")
+            print(f"{winner.name} wins on turn {len(game)}!")
             next_step = input(POSTGAME_OPTIONS)
             if next_step == '1':
                 os.system('clear')
