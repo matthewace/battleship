@@ -54,6 +54,12 @@ def coordinate_mirror_horizontal(coordinate: Coordinate) -> Coordinate:
     return 10 * coordinate_row(coordinate) + (9 - coordinate_col(coordinate))
 
 
+def step_distance(a: Coordinate, b: Coordinate) -> int:
+    """Get the distance from coordinate `a` to `b`."""
+    return max(abs(coordinate_col(a) - coordinate_col(b)),
+               abs(coordinate_row(a) - coordinate_row(b)))
+
+
 COORDINATES_180 = [coordinate_mirror(c) for c in COORDINATES]
 COORDINATES_180_H = [coordinate_mirror_horizontal(c) for c in COORDINATES]
 
@@ -104,6 +110,11 @@ BB_ROWS = [
 BB_PERIMETER = BB_ROW_1 | BB_ROW_10 | BB_COL_A | BB_COL_J
 BB_SIDES = BB_COL_A | BB_COL_J
 BB_TOP_BOTTOM = BB_ROW_1 | BB_ROW_10
+BB_CORNERS = BB_A1 | BB_J1 | BB_A0 | BB_J0
+BB_CENTER = BB_E5 | BB_E6 | BB_F5 | BB_F6
+
+BB_EVENS = 0x000a_a955_aa95_5aa9_55aa_955a_a955
+BB_ODDS = 0x0005_56aa_556a_a556_aa55_6aa5_56aa
 
 
 def lsb(bb: Bitboard) -> int:
@@ -225,6 +236,45 @@ def shift_down_left(bb: Bitboard) -> Bitboard:
 def shift_down_right(bb: Bitboard) -> Bitboard:
     """Shift all coordinates down one row and right one column."""
     return (bb >> 9) & ~BB_COL_A
+
+
+DELTAS_VERTICAL = [10, -10]
+DELTAS_HORIZONTAL = [1, -1]
+DELTAS = DELTAS_VERTICAL + DELTAS_HORIZONTAL
+
+
+def near_attacks(coord: Coordinate, occupied: Bitboard,
+                 deltas: Iterable[int], max_d: int = 4) -> Bitboard:
+    """Calculate all attackable coordinates from starting coordinate.
+
+    PARAMS
+    ------
+    coord : Coordinate
+        Starting coordinate.
+    occupied : Bitboard
+        Representation of pegs on board.
+    deltas : Iterable[int]
+        Directions to be considered.
+
+    RETURNS
+    -------
+    attacks : Bitboard
+        Possible coordinates which can be attacked.
+    """
+    attacks = BB_EMPTY
+    for delta in deltas:
+        _co = coord
+        steps = 0
+        while True:
+            steps += 1
+            _co += delta
+            if (not (0 <= _co < 100)
+                    or step_distance(_co, _co - delta) > 2
+                    or occupied & BB_COORDINATES[_co]
+                    or steps > max_d):
+                break
+            attacks |= BB_COORDINATES[_co]
+    return attacks
 
 
 def _carry_rippler(mask):

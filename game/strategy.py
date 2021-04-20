@@ -22,12 +22,27 @@ Coordinate = bitboard.Coordinate
 CoordinateSet = bitboard.CoordinateSet
 
 
-def focus_fire(coordinate: Coordinate):
-    """Search for adjacent Coordinates.
+class Strats:
+    """Strategies to be used by CPU.
 
     Params
     ------
-    coordinate : Coordinate
+    level : int
+        The level of CPU intelligence
     """
-    ship_coords = CoordinateSet(coordinate)
-    print(ship_coords)
+
+    def __init__(self, level: int = 0) -> None:
+        self.level = level
+
+    def get_attacks(self, level: int) -> CoordinateSet:
+        """Return a list of coordinates to attack."""
+
+    def focus_fire(self, coordinate: Coordinate):
+        """Search for adjacent Coordinates.
+
+        Params
+        ------
+        coordinate : Coordinate
+        """
+        ship_coords = CoordinateSet(coordinate)
+        print(ship_coords)

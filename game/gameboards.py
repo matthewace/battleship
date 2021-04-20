@@ -24,6 +24,10 @@ DIRECTIONS = {
     "LEFT": -1
 }
 
+DELTAS_H = [DIRECTIONS["RIGHT"], DIRECTIONS["LEFT"]]
+DELTAS_V = [DIRECTIONS["UP"], DIRECTIONS["DOWN"]]
+DELTAS_ALL = DELTAS_H + DELTAS_V
+
 
 EMPTY_COORDINATE = '.'
 
@@ -88,6 +92,7 @@ class GameBoard:
         return ''.join(out)
 
     def _clear_board(self):
+        self.turn = 0
         self.attacked = CoordinateSet()
         self.hit = CoordinateSet()
         self.miss = CoordinateSet()
@@ -243,3 +248,56 @@ class AttackBoard(GameBoard):
         """Check if coordinate is available to be attacked."""
         coordinate = parse_coordinate(coordinate)
         return coordinate not in self.attacked
+
+    def adjacents(self, coordinate: Coordinate) -> CoordinateSet:
+        """Return set of adjacent coordinates."""
+        deltas = DIRECTIONS.values()
+        mask = bitboard.near_attacks(coordinate, self.attacked,
+                                     deltas=deltas, max_d=1)
+        return CoordinateSet(mask)
+
+    def ship_attacks(self, ship: Ship) -> CoordinateSet:
+        """Return sets of coordinates in which a ship could be attacked."""
+        locations = bitboard.CoordinateSet()
+
+        ship_set = self.ships[ship]
+        # Skip if no current known coordinates
+        if not ship_set or len(ship_set) == len(ship):
+            return locations
+
+        ship_head = list(ship_set)[0]
+        ship_tail = list(ship_set)[-1]
+        head_to_tail = bitboard.step_distance(ship_head, ship_tail) + 1
+        if head_to_tail == len(ship):
+            full_ship = CoordinateSet.ray(ship_head, ship_tail)
+            return full_ship.difference(ship_set)
+
+        max_d = len(ship) - head_to_tail
+        deltas = []
+        if len(ship_set) == 1:
+            deltas = DELTAS_ALL
+        else:
+            ship_set = CoordinateSet.ray(ship_head, ship_tail)
+            for row in bitboard.BB_ROWS:
+                if ship_set.issubset(row):
+                    deltas = DELTAS_H
+        if not deltas:
+            deltas = DELTAS_V
+
+        for start in ship_set:
+            mask = bitboard.near_attacks(start, self.attacked,
+                                         deltas, max_d=max_d)
+            locations.update(mask)
+
+        return locations
+
+    def get_ship_attacks(self) -> CoordinateSet:
+        """Return a set of potential ship coordinates."""
+        attacks = CoordinateSet()
+        self.turn += 1
+        for ship in self.ships:
+            attacks.update(self.ship_attacks(ship))
+        if not attacks:
+            print(f'turn {self.turn} no attacks, random choice')
+            attacks.update(~self.attacked.mask)
+        return attacks

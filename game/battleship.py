@@ -7,7 +7,6 @@ https://www.hasbro.com/common/instruct/Battleship.PDF
 """
 
 import os
-import random
 from typing import Tuple
 
 from game.player import Human, Player
@@ -77,7 +76,6 @@ class Battleship:
         result : GameResult
             (winner, loser)
         """
-        random.shuffle(self.players)
         half_turns = 0
         winner = None
         loser = None
@@ -97,7 +95,7 @@ class Battleship:
                 print(output)
                 attacker.show_boards()
 
-            attk_coord = attacker.choose("coordinate")
+            attk_coord = attacker.choose("attack_coordinate")
             if 'Q' in attk_coord:
                 winner = defender
                 loser = attacker

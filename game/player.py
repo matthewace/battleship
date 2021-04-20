@@ -6,7 +6,7 @@ Player - Human player
 CPU - AI player
 """
 import random
-from typing import Tuple
+from typing import List, Tuple
 
 import game.bitboard as bitboard
 from game.gameboards import AttackBoard, ShipBoard
@@ -103,6 +103,11 @@ class Player:
         """
         return self.ship_board.attack_result(coordinate)
 
+    def unattacked(self) -> List[str]:
+        """Return list of unattaccked coordinates."""
+        coords_set = bitboard.CoordinateSet(~self.attack_board.attacked)
+        return [bitboard.coordinate_name(c) for c in coords_set]
+
     def add_attack_peg(self, coordinate: str, result: AttackResult) -> None:
         """Add peg to AttackBoard based on results of attack.
 
@@ -156,6 +161,8 @@ class Human(Player):
         choice_type : str
             Key for list of choices.
         """
+        if choice_type == "attack_coordinate":
+            choice_type = "coordinate"
         options = CHOICES[choice_type.lower()]
         tries = 0
         while tries < 5:
@@ -169,8 +176,13 @@ class Human(Player):
 class CPU(Player):
     """The AI variant of a Player."""
 
-    @staticmethod
-    def choose(choice_type: str) -> str:
+    def __init__(self, name: str, level: int = 0) -> None:
+        super().__init__(name)
+        self.level = level
+
+        self.next_attacks = []
+
+    def choose(self, choice_type: str) -> str:
         """Randomly select an option from provided choice_type.
 
         Params
@@ -178,5 +190,21 @@ class CPU(Player):
         choice_type : str
             Key for list of choices.
         """
+        if choice_type.lower() == "attack_coordinate":
+            return self.choose_attack()
         options = CHOICES[choice_type.lower()]
         return random.choice(options)
+
+    def focus_fire(self, coordinate: bitboard.Coordinate) -> None:
+        """Focus fire after scoring a hit."""
+
+    def choose_attack(self) -> str:
+        """Choose an attack coordinate."""
+        if self.level == 0:
+            coord = random.choice(self.unattacked())
+        elif self.level == 1:
+            coord_set = self.attack_board.get_ship_attacks()
+            options = [bitboard.coordinate_name(c) for c in coord_set]
+            return random.choice(options)
+
+        return coord
