@@ -9,7 +9,7 @@ Ship Placement
 Hunting
     Hunt in diagonals
     Checkerboard method
-    Focus fire after hit
+    Focus fire after hit (I)
     Ship density probability
 
 
