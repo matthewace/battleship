@@ -298,6 +298,5 @@ class AttackBoard(GameBoard):
         for ship in self.ships:
             attacks.update(self.ship_attacks(ship))
         if not attacks:
-            print(f'turn {self.turn} no attacks, random choice')
             attacks.update(~self.attacked.mask)
         return attacks
