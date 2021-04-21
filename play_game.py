@@ -32,7 +32,7 @@ def welcome() -> str:
         player1 = Human(p1_name)
     else:
         player1 = CPU('cpu_p1')
-    player2 = CPU('cpu_p2', level=1)
+    player2 = CPU('cpu_p2', level=2)
 
     play(player1, player2)
 

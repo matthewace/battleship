@@ -15,6 +15,9 @@ from game.ship import Ship
 
 AttackResult = Tuple[bool, Ship]
 
+COORDINATES = bitboard.COORDINATE_NAMES
+
+
 CHOICES = {
     "coordinate": bitboard.COORDINATE_NAMES,
     "direction": ["UP", "DOWN", "LEFT", "RIGHT"],
@@ -41,6 +44,7 @@ class Player:
 
         self.attack_board = AttackBoard()
         self.ship_board = ShipBoard()
+        self.ships_placed = False
 
     def __str__(self) -> str:
         return f"{self.name} {self.record()} {self.accuracy()}%"
@@ -103,11 +107,6 @@ class Player:
         """
         return self.ship_board.attack_result(coordinate)
 
-    def unattacked(self) -> List[str]:
-        """Return list of unattaccked coordinates."""
-        coords_set = bitboard.CoordinateSet(~self.attack_board.attacked)
-        return [bitboard.coordinate_name(c) for c in coords_set]
-
     def add_attack_peg(self, coordinate: str, result: AttackResult) -> None:
         """Add peg to AttackBoard based on results of attack.
 
@@ -136,6 +135,11 @@ class Player:
         """
         self.ship_board.add_peg(coordinate, result)
 
+    def _attack_options(self) -> List[str]:
+        """Return a list of coordinate names which have not been attacked."""
+        unattacked = ~self.attack_board.attacked
+        return [bitboard.COORDINATE_NAMES[i] for i in unattacked]
+
     def is_dead(self) -> bool:
         """Return True if all player's ships are sunk."""
         return self.ship_board.check_all_sunk()
@@ -153,24 +157,21 @@ class Human(Player):
     """The human variant of a Player."""
 
     @staticmethod
-    def choose(choice_type: str) -> str:
-        """Get player's choice of available options.
+    def choose_direction() -> str:
+        """Prompt Player for choice of direction."""
+        options = ["UP", "DOWN", "LEFT", "RIGHT"]
+        choice = ''
+        while choice not in options and "Q" not in choice:
+            choice = input('Choose Direction: ').upper()
+        return choice
 
-        Params
-        ------
-        choice_type : str
-            Key for list of choices.
-        """
-        if choice_type == "attack_coordinate":
-            choice_type = "coordinate"
-        options = CHOICES[choice_type.lower()]
-        tries = 0
-        while tries < 5:
-            tries += 1
-            choice = input(f'Choose a {choice_type}: ').upper()
-            if choice in options or "Q" in choice:
-                return choice
-        return None
+    def choose_coordinate(self) -> str:
+        """Prompt player to choose a coordinate."""
+        options = self._attack_options()
+        choice = ''
+        while choice not in options and "Q" not in choice:
+            choice = input('Choose Coordinate: ').upper()
+        return choice
 
 
 class CPU(Player):
@@ -180,31 +181,26 @@ class CPU(Player):
         super().__init__(name)
         self.level = level
 
-        self.next_attacks = []
+    def _attack_options(self) -> List[str]:
+        """Return a list of coordinate names which have not been attacked."""
+        unattacked = ~self.attack_board.attacked
+        if self.level > 1 and self.ships_placed:
+            odds = bitboard.CoordinateSet(bitboard.BB_ODDS)
+            return [COORDINATES[i] for i in unattacked if i in odds]
+        return [COORDINATES[i] for i in unattacked]
 
-    def choose(self, choice_type: str) -> str:
-        """Randomly select an option from provided choice_type.
+    def choose_coordinate(self) -> str:
+        """Choose an attack coordinate."""
+        options = self._attack_options()
+        if self.level > 0:
+            ship_attacks = self.attack_board.get_ship_attacks()
+            if ship_attacks:
+                options = [bitboard.coordinate_name(c) for c in ship_attacks]
 
-        Params
-        ------
-        choice_type : str
-            Key for list of choices.
-        """
-        if choice_type.lower() == "attack_coordinate":
-            return self.choose_attack()
-        options = CHOICES[choice_type.lower()]
         return random.choice(options)
 
-    def focus_fire(self, coordinate: bitboard.Coordinate) -> None:
-        """Focus fire after scoring a hit."""
-
-    def choose_attack(self) -> str:
-        """Choose an attack coordinate."""
-        if self.level == 0:
-            coord = random.choice(self.unattacked())
-        elif self.level == 1:
-            coord_set = self.attack_board.get_ship_attacks()
-            options = [bitboard.coordinate_name(c) for c in coord_set]
-            return random.choice(options)
-
-        return coord
+    @staticmethod
+    def choose_direction() -> str:
+        """Randomly choose of direction."""
+        options = ["UP", "DOWN", "LEFT", "RIGHT"]
+        return random.choice(options)

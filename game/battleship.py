@@ -95,7 +95,7 @@ class Battleship:
                 print(output)
                 attacker.show_boards()
 
-            attk_coord = attacker.choose("attack_coordinate")
+            attk_coord = attacker.choose_coordinate()
             if 'Q' in attk_coord:
                 winner = defender
                 loser = attacker
@@ -152,9 +152,10 @@ class Battleship:
                     print(f'*** Building {ship} ***')
                     player.show_ship_board()
                     print(f'Ship Length: {len(ship)}')
-                bow = player.choose("coordinate").upper()
-                direction = player.choose("direction").upper()
+                bow = player.choose_coordinate()
+                direction = player.choose_direction()
                 try:
                     built = player.add_ship(ship, bow, direction)
                 except ValueError as err:
                     self.log.debug(f'Unable to add ship: {err}')
+        player.ships_placed = True

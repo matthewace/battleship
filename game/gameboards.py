@@ -14,7 +14,7 @@ Coordinate = Union[str, bitboard.Coordinate]
 CoordinateSet = bitboard.CoordinateSet
 
 
-PEGS = [HIT, MISS] = ["+", "-"]
+PEGS = [HIT, MISS] = ["+", "x"]
 
 Direction = str
 DIRECTIONS = {
@@ -265,27 +265,30 @@ class AttackBoard(GameBoard):
         if not ship_set or len(ship_set) == len(ship):
             return locations
 
+        # Calculate known coordinates for ship.  We know all coordinates
+        # between ship_head and ship_tail should be attacked.
         ship_head = list(ship_set)[0]
         ship_tail = list(ship_set)[-1]
         head_to_tail = bitboard.step_distance(ship_head, ship_tail) + 1
-        if head_to_tail == len(ship):
-            full_ship = CoordinateSet.ray(ship_head, ship_tail)
-            return full_ship.difference(ship_set)
-
         max_d = len(ship) - head_to_tail
+        known_ship = CoordinateSet.ray(ship_head, ship_tail)
+
+        # Return coordinates between head and tail.
+        if max_d == 0:
+            return known_ship.difference(ship_set)
+
         deltas = []
-        if len(ship_set) == 1:
+        if len(known_ship) == 1:
             deltas = DELTAS_ALL
         else:
-            ship_set = CoordinateSet.ray(ship_head, ship_tail)
             for row in bitboard.BB_ROWS:
                 if ship_set.issubset(row):
                     deltas = DELTAS_H
-        if not deltas:
-            deltas = DELTAS_V
+            if not deltas:
+                deltas = DELTAS_V
 
-        for start in ship_set:
-            mask = bitboard.near_attacks(start, self.attacked,
+        for coord in known_ship:
+            mask = bitboard.near_attacks(coord, self.attacked,
                                          deltas, max_d=max_d)
             locations.update(mask)
 
@@ -293,10 +296,8 @@ class AttackBoard(GameBoard):
 
     def get_ship_attacks(self) -> CoordinateSet:
         """Return a set of potential ship coordinates."""
-        attacks = CoordinateSet()
+        ship_attacks = CoordinateSet()
         self.turn += 1
         for ship in self.ships:
-            attacks.update(self.ship_attacks(ship))
-        if not attacks:
-            attacks.update(~self.attacked.mask)
-        return attacks
+            ship_attacks.update(self.ship_attacks(ship))
+        return ship_attacks
