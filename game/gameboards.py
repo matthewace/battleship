@@ -302,7 +302,7 @@ class AttackBoard(GameBoard):
         coordinate = parse_coordinate(coordinate)
         return coordinate not in self.attacked
 
-    def _ship_attacks(self, ship: Ship, focus_fire: bool) -> CoordinateSet:
+    def _ship_attacks(self, ship: Ship) -> CoordinateSet:
         """Return sets of coordinates in which a ship could be attacked."""
         locations = CoordinateSet()
         ship_set = self.ships[ship]
@@ -321,9 +321,21 @@ class AttackBoard(GameBoard):
 
         deltas = []
         if len(known_ship) == 1:
-            deltas = DELTAS_ALL
-            # if focus_fire:
-            #    max_d = 1
+            ship_coord = list(known_ship)[0]
+            for _d in ["LEFT", "RIGHT"]:
+                try:
+                    if ship_coordinates(ship_coord, len(ship), _d):
+                        deltas += DELTAS_H
+                        break
+                except ValueError:
+                    continue
+            for _d in ["UP", "DOWN"]:
+                try:
+                    if ship_coordinates(ship_coord, len(ship), _d):
+                        deltas += DELTAS_V
+                        break
+                except ValueError:
+                    continue
         else:
             for row in bitboard.BB_ROWS:
                 if ship_set.issubset(row):
@@ -333,17 +345,17 @@ class AttackBoard(GameBoard):
 
         for coord in known_ship:
             mask = bitboard.near_attacks(coord, self.attacked,
-                                         deltas, max_d=max_d)
+                                         deltas, max_d=1)
             locations.update(mask)
 
         return locations
 
-    def get_ship_attacks(self, focus_fire: bool = False) -> CoordinateSet:
+    def get_ship_attacks(self) -> CoordinateSet:
         """Return a set of potential ship coordinates."""
         ship_attacks = CoordinateSet()
         for ship in self.ships:
             if self.ships[ship] and len(self.ships[ship]) < len(ship):
-                attacks = self._ship_attacks(ship, focus_fire)
+                attacks = self._ship_attacks(ship)
                 ship_attacks.update(attacks)
         return ship_attacks
 

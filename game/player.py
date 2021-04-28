@@ -29,16 +29,15 @@ def get_probabilities(items: List[object]) -> Dict[int, List[object]]:
     """Calculate percent probability of each unique object in list."""
     probabilities = {}
     items.sort()
-    total_items = len(items)
+    #  total_items = len(items)
     while items:
         item = items[0]
         num_item = items.count(item)
-        item_prob = int(100 * num_item / total_items)
+        item_prob = num_item  # int(100 * num_item / total_items)
         if item_prob not in probabilities:
             probabilities[item_prob] = []
         probabilities[item_prob].append(item)
         items = items[num_item:]
-
     return probabilities
 
 
@@ -205,24 +204,23 @@ class CPU(Player):
     def _attack_options(self) -> List[str]:
         """Return a list of coordinate names which have not been attacked."""
         options = ~self.attack_board.attacked
-        if self.level > 0 and self.ships_placed:
-            focus_fire = self.level > 2
-            ship_attacks = self._get_ship_attacks(focus_fire=focus_fire)
+        if self.ships_placed and self.level > 0:
+            ship_attacks = self._get_ship_attacks()
             if ship_attacks:
                 options = ship_attacks
-            elif self.level == 2:
-                options.intersection_update(ODD_COORDS)
-            elif self.level > 2:
+            elif self.level == 3:
                 densities = self.attack_board.ship_densities()
                 prob_table = get_probabilities(densities)
                 top_prob = sorted(prob_table)[-1]
                 options = [i for i in prob_table[top_prob] if i in ODD_COORDS]
                 if not options:
                     options = prob_table[top_prob]
+            elif self.level == 2:
+                options.intersection_update(ODD_COORDS)
         return [COORDINATES[i] for i in options]
 
-    def _get_ship_attacks(self, focus_fire: bool) -> bitboard.CoordinateSet:
-        return self.attack_board.get_ship_attacks(focus_fire=focus_fire)
+    def _get_ship_attacks(self) -> bitboard.CoordinateSet:
+        return self.attack_board.get_ship_attacks()
 
     def choose_coordinate(self) -> str:
         """Choose an attack coordinate."""
