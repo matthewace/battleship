@@ -132,7 +132,9 @@ class Battleship:
         """Clear boards and place ships for both players."""
         for player in self.players:
             player.clear_boards()
+            player.set_ships_placed(False)
             self.place_ships(player)
+            player.set_ships_placed(True)
 
     def show_log(self) -> None:
         """Print a pretty version of the game logs."""
@@ -158,4 +160,3 @@ class Battleship:
                     built = player.add_ship(ship, bow, direction)
                 except ValueError as err:
                     self.log.debug(f'Unable to add ship: {err}')
-        player.ships_placed = True

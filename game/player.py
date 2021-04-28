@@ -6,7 +6,7 @@ Player - Human player
 CPU - AI player
 """
 import random
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import game.bitboard as bitboard
 from game.gameboards import AttackBoard, ShipBoard
@@ -16,12 +16,30 @@ from game.ship import Ship
 AttackResult = Tuple[bool, Ship]
 
 COORDINATES = bitboard.COORDINATE_NAMES
+ODD_COORDS = bitboard.CoordinateSet(bitboard.BB_ODDS)
 
 
 CHOICES = {
     "coordinate": bitboard.COORDINATE_NAMES,
     "direction": ["UP", "DOWN", "LEFT", "RIGHT"],
 }
+
+
+def get_probabilities(items: List[object]) -> Dict[int, List[object]]:
+    """Calculate percent probability of each unique object in list."""
+    probabilities = {}
+    items.sort()
+    total_items = len(items)
+    while items:
+        item = items[0]
+        num_item = items.count(item)
+        item_prob = int(100 * num_item / total_items)
+        if item_prob not in probabilities:
+            probabilities[item_prob] = []
+        probabilities[item_prob].append(item)
+        items = items[num_item:]
+
+    return probabilities
 
 
 class Player:
@@ -42,9 +60,8 @@ class Player:
         self.hits = 0
         self.attacks = 0
 
-        self.attack_board = AttackBoard()
-        self.ship_board = ShipBoard()
-        self.ships_placed = False
+        self.clear_boards()
+        self.set_ships_placed(False)
 
     def __str__(self) -> str:
         return f"{self.name} {self.record()} {self.accuracy()}%"
@@ -61,8 +78,12 @@ class Player:
 
     def clear_boards(self) -> None:
         """Clear boards for a new game."""
-        self.attack_board.clear_board()
-        self.ship_board.clear_board()
+        self.attack_board = AttackBoard()
+        self.ship_board = ShipBoard()
+
+    def set_ships_placed(self, all_placed: bool) -> None:
+        """Update ships_placed variable."""
+        self.ships_placed = all_placed
 
     def show_attack_board(self) -> None:
         """Print attack board."""
@@ -183,20 +204,29 @@ class CPU(Player):
 
     def _attack_options(self) -> List[str]:
         """Return a list of coordinate names which have not been attacked."""
-        unattacked = ~self.attack_board.attacked
-        if self.level > 1 and self.ships_placed:
-            odds = bitboard.CoordinateSet(bitboard.BB_ODDS)
-            return [COORDINATES[i] for i in unattacked if i in odds]
-        return [COORDINATES[i] for i in unattacked]
+        options = ~self.attack_board.attacked
+        if self.level > 0 and self.ships_placed:
+            focus_fire = self.level > 2
+            ship_attacks = self._get_ship_attacks(focus_fire=focus_fire)
+            if ship_attacks:
+                options = ship_attacks
+            elif self.level == 2:
+                options.intersection_update(ODD_COORDS)
+            elif self.level > 2:
+                densities = self.attack_board.ship_densities()
+                prob_table = get_probabilities(densities)
+                top_prob = sorted(prob_table)[-1]
+                options = [i for i in prob_table[top_prob] if i in ODD_COORDS]
+                if not options:
+                    options = prob_table[top_prob]
+        return [COORDINATES[i] for i in options]
+
+    def _get_ship_attacks(self, focus_fire: bool) -> bitboard.CoordinateSet:
+        return self.attack_board.get_ship_attacks(focus_fire=focus_fire)
 
     def choose_coordinate(self) -> str:
         """Choose an attack coordinate."""
         options = self._attack_options()
-        if self.level > 0:
-            ship_attacks = self.attack_board.get_ship_attacks()
-            if ship_attacks:
-                options = [bitboard.coordinate_name(c) for c in ship_attacks]
-
         return random.choice(options)
 
     @staticmethod

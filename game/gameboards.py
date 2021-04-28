@@ -3,7 +3,7 @@ gameboards which are each a 10x10 grid of coordinates.  One board is used to
 store the player's ship locations and the other is to track attacks of the
 opponent's ship-board.
 """
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import game.bitboard as bitboard
 from game.ship import Ship
@@ -70,6 +70,60 @@ def ship_coordinates(coordinate: Coordinate,
     return bitboard.CoordinateSet.ray(coordinate, tail)
 
 
+def coord_possibilities(ship: Ship, pegs: CoordinateSet) -> CoordinateSet:
+    """Return a set of possible ship coordinates.
+
+    Params
+    ------
+    ship : Ship
+        Type of ship.
+    pegs : CoordinateSet
+        Set of occupied coordinates which block ship placement.
+
+    Returns
+    -------
+    ship_set : CoordinateSet
+        All possible coordinates ship could occupy.
+    """
+    ship_set = CoordinateSet()
+    for bow in ~pegs:
+        for _dir in ["RIGHT", "DOWN"]:
+            try:
+                coords = ship_coordinates(bow, len(ship), _dir)
+                if coords and coords.isdisjoint(pegs):
+                    ship_set.update(coords)
+            except ValueError:
+                continue
+    return ship_set
+
+
+def ship_possibilities(ship: Ship, pegs: CoordinateSet) -> List[CoordinateSet]:
+    """Return all possible full ship locations.
+
+    Params
+    ------
+    ship : Ship
+        Type of ship.
+    pegs : CoordinateSet
+        Set of occupied coordinates which block ship placement.
+
+    Returns
+    -------
+    ship_list : List[CoordinateSet]
+        All possible coordinate sets ship could occupy.
+    """
+    ship_list = []
+    for bow in ~pegs:
+        for _dir in ["RIGHT", "DOWN"]:
+            try:
+                coords = ship_coordinates(bow, len(ship), _dir)
+                if coords and coords.isdisjoint(pegs):
+                    ship_list.append(coords)
+            except ValueError:
+                continue
+    return ship_list
+
+
 class GameBoard:
     """A gameboard for the Battleship game."""
     def __init__(self) -> None:
@@ -92,7 +146,6 @@ class GameBoard:
         return ''.join(out)
 
     def _clear_board(self):
-        self.turn = 0
         self.attacked = CoordinateSet()
         self.hit = CoordinateSet()
         self.miss = CoordinateSet()
@@ -249,21 +302,10 @@ class AttackBoard(GameBoard):
         coordinate = parse_coordinate(coordinate)
         return coordinate not in self.attacked
 
-    def adjacents(self, coordinate: Coordinate) -> CoordinateSet:
-        """Return set of adjacent coordinates."""
-        deltas = DIRECTIONS.values()
-        mask = bitboard.near_attacks(coordinate, self.attacked,
-                                     deltas=deltas, max_d=1)
-        return CoordinateSet(mask)
-
-    def ship_attacks(self, ship: Ship) -> CoordinateSet:
+    def _ship_attacks(self, ship: Ship, focus_fire: bool) -> CoordinateSet:
         """Return sets of coordinates in which a ship could be attacked."""
-        locations = bitboard.CoordinateSet()
-
+        locations = CoordinateSet()
         ship_set = self.ships[ship]
-        # Skip if no current known coordinates
-        if not ship_set or len(ship_set) == len(ship):
-            return locations
 
         # Calculate known coordinates for ship.  We know all coordinates
         # between ship_head and ship_tail should be attacked.
@@ -280,6 +322,8 @@ class AttackBoard(GameBoard):
         deltas = []
         if len(known_ship) == 1:
             deltas = DELTAS_ALL
+            # if focus_fire:
+            #    max_d = 1
         else:
             for row in bitboard.BB_ROWS:
                 if ship_set.issubset(row):
@@ -294,10 +338,48 @@ class AttackBoard(GameBoard):
 
         return locations
 
-    def get_ship_attacks(self) -> CoordinateSet:
+    def get_ship_attacks(self, focus_fire: bool = False) -> CoordinateSet:
         """Return a set of potential ship coordinates."""
         ship_attacks = CoordinateSet()
-        self.turn += 1
         for ship in self.ships:
-            ship_attacks.update(self.ship_attacks(ship))
+            if self.ships[ship] and len(self.ships[ship]) < len(ship):
+                attacks = self._ship_attacks(ship, focus_fire)
+                ship_attacks.update(attacks)
         return ship_attacks
+
+    def smallest_unsunk_ship(self) -> Ship:
+        """Return the smallest unsunk ship."""
+        smallest = Ship('Carrier')
+        for ship, mask in self.ships.items():
+            if len(ship) != len(mask) and len(ship) < len(smallest):
+                smallest = ship
+        return smallest
+
+    def _coord_possibilities(self, ship: Ship) -> CoordinateSet:
+        """Return coordinates a ship could legally occupy."""
+        return coord_possibilities(ship, self.attacked)
+
+    def coord_densities(self) -> List[Coordinate]:
+        """Return a list of coordinates weighted by occurrences of possible
+        ship occupancy.
+        """
+        density = []
+        for ship in self.ships:
+            if not self.ships[ship]:
+                density += list(self._coord_possibilities(ship))
+        return density
+
+    def _ship_possibilities(self, ship: Ship) -> List[CoordinateSet]:
+        return ship_possibilities(ship, self.attacked)
+
+    def ship_densities(self) -> List[Coordinate]:
+        """Return a list of coordinates weighted with possible full ship
+        occurences."""
+        density = []
+        for ship in self.ships:
+            if not self.ships[ship]:
+                masks = self._ship_possibilities(ship)
+                for mask in masks:
+                    density += list(mask)
+
+        return density
