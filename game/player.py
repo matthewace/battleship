@@ -17,6 +17,7 @@ AttackResult = Tuple[bool, Ship]
 
 COORDINATES = bitboard.COORDINATE_NAMES
 ODD_COORDS = bitboard.CoordinateSet(bitboard.BB_ODDS)
+EVEN_COORDS = bitboard.CoordinateSet(bitboard.BB_EVENS)
 
 
 CHOICES = {
@@ -200,6 +201,15 @@ class CPU(Player):
     def __init__(self, name: str, level: int = 0) -> None:
         super().__init__(name)
         self.level = level
+        self.strat = None
+
+    def clear_boards(self) -> None:
+        """Clear boards for a new game."""
+        super().clear_boards()
+        self._choose_hunt_strategy()
+
+    def _choose_hunt_strategy(self) -> None:
+        self.strat = random.choice([ODD_COORDS, EVEN_COORDS])
 
     def _attack_options(self) -> List[str]:
         """Return a list of coordinate names which have not been attacked."""
@@ -212,11 +222,11 @@ class CPU(Player):
                 densities = self.attack_board.ship_densities()
                 prob_table = get_probabilities(densities)
                 top_prob = sorted(prob_table)[-1]
-                options = [i for i in prob_table[top_prob] if i in ODD_COORDS]
+                options = [i for i in prob_table[top_prob] if i in self.strat]
                 if not options:
                     options = prob_table[top_prob]
             elif self.level == 2:
-                options.intersection_update(ODD_COORDS)
+                options.intersection_update(self.strat)
         return [COORDINATES[i] for i in options]
 
     def _get_ship_attacks(self) -> bitboard.CoordinateSet:
