@@ -291,10 +291,10 @@ def shared(a: Coordinate, b: Coordinate) -> Bitboard:
     """Return the shared row or column of `a` and `b`."""
     if coordinate_col(a) == coordinate_col(b):
         return BB_COLS[coordinate_col(a)]
-    elif coordinate_row(a) == coordinate_row(b):
+    if coordinate_row(a) == coordinate_row(b):
         return BB_ROWS[coordinate_row(a)]
-    else:
-        return BB_EMPTY
+
+    return BB_EMPTY
 
 
 def _rays() -> List[List[Bitboard]]:
